@@ -17,6 +17,7 @@
 #define HAL_BOARD_PX4      5
 #define HAL_BOARD_FLYMAPLE 6
 #define HAL_BOARD_LINUX    7
+#define HAL_BOARD_ERLE     8
 #define HAL_BOARD_EMPTY    99
 
 
@@ -79,6 +80,12 @@
 #elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 #define AP_HAL_BOARD_DRIVER AP_HAL_Linux
 #define HAL_BOARD_NAME "Linux"
+#define HAL_CPU_CLASS HAL_CPU_CLASS_1000
+#define HAL_OS_POSIX_IO 1
+
+#elif CONFIG_HAL_BOARD == HAL_BOARD_ERLE
+#define AP_HAL_BOARD_DRIVER AP_HAL_Linux
+#define HAL_BOARD_NAME "Erle Linux"
 #define HAL_CPU_CLASS HAL_CPU_CLASS_1000
 #define HAL_OS_POSIX_IO 1
 

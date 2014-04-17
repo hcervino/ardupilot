@@ -209,6 +209,8 @@ static DataFlash_File DataFlash("logs");
 static DataFlash_File DataFlash("/fs/microsd/APM/LOGS");
 #elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 static DataFlash_File DataFlash("logs");
+#elif CONFIG_HAL_BOARD == HAL_BOARD_ERLE
+static DataFlash_File DataFlash("logs");
 #else
 static DataFlash_Empty DataFlash;
 #endif
@@ -264,6 +266,8 @@ static AP_InertialSensor_PX4 ins;
 AP_InertialSensor_Flymaple ins;
 #elif CONFIG_IMU_TYPE == CONFIG_IMU_L3G4200D
 AP_InertialSensor_L3G4200D ins;
+#elif CONFIG_IMU_TYPE == CONFIG_IMU_MPU9150
+AP_InertialSensor_MPU9150 ins;
 #endif
 
  #if CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
