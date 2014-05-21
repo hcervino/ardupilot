@@ -53,7 +53,8 @@ void setup()
 
     // motor initialisation
     motors.set_update_rate(490);
-    motors.set_frame_orientation(AP_MOTORS_X_FRAME);
+    // motors.set_frame_orientation(AP_MOTORS_X_FRAME);
+    motors.set_frame_orientation(AP_MOTORS_PLUS_FRAME);
     motors.set_min_throttle(130);
     motors.set_mid_throttle(500);
     motors.Init();      // initialise motors
