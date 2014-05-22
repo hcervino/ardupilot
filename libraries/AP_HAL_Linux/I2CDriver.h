@@ -6,7 +6,7 @@
 
 class Linux::LinuxI2CDriver : public AP_HAL::I2CDriver {
 public:
-    LinuxI2CDriver(AP_HAL::Semaphore* semaphore, const char *device);
+    LinuxI2CDriver();
 
     void begin();
     void end();
@@ -38,14 +38,62 @@ public:
 
     uint8_t lockup_count();
 
-    AP_HAL::Semaphore* get_semaphore() { return _semaphore; }
+    // substitute "take" in a multi-bus aware driver.
+    // //      i2cdevice corresponds to the I2CDevice enum
+    // bool lock_bus(uint32_t i2cdevice);
+    // bool release_bus(uint32_t i2cdevice);
+    bool lock_bus(uint8_t bus, uint32_t timeout_ms);
+    bool lock_bus_nonblocking(uint8_t bus);
+    bool release_bus(uint8_t bus);
+
+    uint8_t num_buses();
+
+    // THIS CALL SHOULDN'T BE USED WITH THE MULTI-BUS AWARE DRIVER
+    AP_HAL::Semaphore* get_semaphore() { return NULL; }
 
 private:
-    AP_HAL::Semaphore* _semaphore;
     bool set_address(uint8_t addr);
     int _fd;
     uint8_t _addr;
-    const char *_device;
+
+    typedef struct i2c_bus {
+        char* device;
+        int fd;
+        LinuxSemaphore  semaphore;        
+        // flags
+    };
+    
+    uint8_t _num_i2c_buses = 3;
+    // semaphores to init the different busses.
+    LinuxSemaphore  i2cSemaphore0;
+    LinuxSemaphore  i2cSemaphore1;
+    LinuxSemaphore  i2cSemaphore2;
+
+    i2c_bus _i2c_busses[] = {
+        {
+            "/dev/i2c-0",
+            -1,
+            i2cSemaphore0
+        },
+        {
+            "/dev/i2c-1",
+            -1,
+            i2cSemaphore1
+        },
+        {
+            "/dev/i2c-2",
+            -1,
+            i2cSemaphore2
+        }
+    };
+
+
+    // // loop up for the I2CDevice
+    // uint8_t lookup_device(uint32_t i2cdevice);
+    
+    // // probe for an I2C device in bus
+    // uint8_t probe_device(uint8_t bus);
+
 };
 
 #endif // __AP_HAL_LINUX_I2CDRIVER_H__

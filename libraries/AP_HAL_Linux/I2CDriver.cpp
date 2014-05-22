@@ -20,10 +20,9 @@ using namespace Linux;
 /*
   constructor
  */
-LinuxI2CDriver::LinuxI2CDriver(AP_HAL::Semaphore* semaphore, const char *device) : 
+LinuxI2CDriver::LinuxI2CDriver(AP_HAL::Semaphore* semaphore) : 
     _semaphore(semaphore),
-    _fd(-1),
-    _device(device)
+    _fd(-1)
 {
 }
 
@@ -32,17 +31,21 @@ LinuxI2CDriver::LinuxI2CDriver(AP_HAL::Semaphore* semaphore, const char *device)
  */
 void LinuxI2CDriver::begin() 
 {
-    if (_fd != -1) {
-        close(_fd);
+    for (uint8_t i=0;i<_num_i2c_buses;i++){
+        if (_i2c_busses[i].fd != -1) {
+            close(_i2c_busses[i].fd);
+        }
+        _fd = open(_i2c_busses[i].device, O_RDWR);        
     }
-    _fd = open(_device, O_RDWR);
 }
 
 void LinuxI2CDriver::end() 
 {
-    if (_fd != -1) {
-        ::close(_fd);
-        _fd = -1;
+    for (uint8_t i=0;i<_num_i2c_buses;i++){
+        if (_i2c_busses[i].fd != -1) {
+            ::close(_i2c_busses[i].fd);
+            _i2c_busses[i].fd = -1;
+        }
     }
 }
 
@@ -213,4 +216,48 @@ uint8_t LinuxI2CDriver::lockup_count()
 {
     return 0;
 }
+
+uint8_t LinuxI2CDriver::lookup_device(uint32_t i2cdevice){
+    return 0;
+}
+
+// bool LinuxI2CDriver::lock_bus(uint32_t i2cdevice, uint32_t timeout_ms){
+bool LinuxI2CDriver::lock_bus(uint8_t bus, uint32_t timeout_ms){
+    // TODO Figure out which is the device and select the appropiate instance in _i2c_busses
+    AP_HAL::Semaphore _semaphore = _i2c_busses[bus].semaphore;
+    if (!_semaphore.take(timeout_ms))
+        return false;
+    return true;
+}
+
+bool LinuxI2CDriver::lock_bus_nonblocking(uint8_t bus){
+    // TODO Figure out which is the device and select the appropiate instance in _i2c_busses
+    AP_HAL::Semaphore _semaphore = _i2c_busses[bus].semaphore;
+    if (!_semaphore.take_nonblocking())
+        return false;
+    return true;
+}
+
+// bool LinuxI2CDriver::release_bus(uint32_t i2cdevice){    
+bool release_bus(uint8_t bus){
+    // TODO Figure out which is the device and select the appropiate instance in _i2c_busses    
+    AP_HAL::Semaphore _semaphore = _i2c_busses[bus].semaphore;
+    _semaphore.give();
+    return true;
+}
+
+uint8_t LinuxI2CDriver::num_buses(){
+    return _num_i2c_buses;
+}
+
+// uint8_t lookup_device(uint32_t i2cdevice){
+//     return 0;
+// }
+
+
+// uint8_t probe_device(uint8_t bus){
+//     return 0;
+// }
+
+
 #endif // CONFIG_HAL_BOARD
