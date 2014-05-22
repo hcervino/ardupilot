@@ -57,6 +57,16 @@ namespace AP_HAL {
         SPIDevice_LSM9DS0
     };
 
+    // /**
+    //  * Global names for all of the existing I2C devices on all platforms.
+    //  */
+
+    // enum I2CDevice {
+    //     I2CDevice_L3G4200D,
+    //     I2CDevice_MPU9150
+    //     // I2CDevice_MS5611
+    // };
+
 }
 
 // macro to hide the details of AP_HAL::MemberProc
