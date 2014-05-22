@@ -135,11 +135,7 @@ uint16_t AP_InertialSensor_L3G4200D::_init_sensor( Sample_rate sample_rate )
         break;
     }
 
-    // get pointer to i2c bus semaphore
-    AP_HAL::Semaphore* i2c_sem = hal.i2c->get_semaphore();
-
-    // take i2c bus sempahore
-    if (!i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
+    if (!hal.i2c->lock_bus(1,HAL_SEMAPHORE_BLOCK_FOREVER))
         return false;
 
     // Init the accelerometer
@@ -222,7 +218,7 @@ uint16_t AP_InertialSensor_L3G4200D::_init_sensor( Sample_rate sample_rate )
     _set_filter_frequency(_mpu6000_filter);
 
     // give back i2c semaphore
-    i2c_sem->give();
+    hal.i2c->release_bus();
 
     // start the timer process to read samples
     hal.scheduler->register_timer_process(AP_HAL_MEMBERPROC(&AP_InertialSensor_L3G4200D::_accumulate));
