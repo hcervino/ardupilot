@@ -10,8 +10,8 @@ static void init_barometer(void)
 static void init_sonar(void)
 {
 #if CONFIG_HAL_BOARD == HAL_BOARD_APM1
-    sonar.Init(&adc);
-    sonar2.Init(&adc);
+    sonar.Init(&apm1_adc);
+    sonar2.Init(&apm1_adc);
 #else
     sonar.Init(NULL);
     sonar2.Init(NULL);
