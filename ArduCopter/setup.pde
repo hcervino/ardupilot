@@ -5,7 +5,7 @@
 // Functions called from the setup menu
 static int8_t   setup_factory           (uint8_t argc, const Menu::arg *argv);
 static int8_t   setup_show              (uint8_t argc, const Menu::arg *argv);
-
+static int8_t   esc_calib               (uint8_t argc, const Menu::arg *argv);
 
 // Command/function table for the setup menu
 const struct Menu::command setup_menu_commands[] PROGMEM = {
@@ -13,6 +13,7 @@ const struct Menu::command setup_menu_commands[] PROGMEM = {
     // =======          ===============
     {"reset",                       setup_factory},
     {"show",                        setup_show},
+    {"esc_calib",                   esc_calib},
 };
 
 // Create the setup menu object.
@@ -98,6 +99,142 @@ setup_show(uint8_t argc, const Menu::arg *argv)
     return(0);
 }
 
+static int8_t
+esc_calib(uint8_t argc,const Menu::arg *argv)
+{
+
+
+	char c;
+	unsigned max_channels = 0;
+	uint32_t set_mask = 0;
+
+	uint16_t pwm_high = PWM_CALIB_MAX;
+	uint16_t pwm_low = PWM_CALIB_MIN;
+
+
+	if (argc < 2) {
+		cliSerial->printf_P(PSTR("Pls provide Channel Mask\n"
+                                    "\tusage: esc_calib 1010 - enables calibration for 2nd and 4th Motor\n"));
+        return(0);
+	}
+    
+
+	
+    set_mask = strtol (argv[1].str, NULL, 2);
+	if (set_mask == 0)
+		cliSerial->printf_P(PSTR("no channels chosen"));
+    //cliSerial->printf_P(PSTR("\n%d\n"),set_mask);
+    set_mask<<=1;
+	/* wait 50 ms */
+	hal.scheduler->delay(50);
+
+
+	cliSerial->printf_P(PSTR("\nATTENTION, please remove or fix propellers before starting calibration!\n"
+	       "\n"
+	       "Make sure\n"
+	       "\t - that the ESCs are not powered\n"
+	       "\t - that safety is off\n"
+	       "\t - that the controllers are stopped\n"
+	       "\n"
+	       "Do you want to start calibration now: y or n?\n"));
+
+	/* wait for user input */
+	while (1) {
+            c= cliSerial->read();
+			if (c == 'y' || c == 'Y') {
+
+				break;
+
+			} else if (c == 0x03 || c == 0x63 || c == 'q') {
+				cliSerial->printf_P(PSTR("ESC calibration exited\n"));
+				return(0);
+
+			} else if (c == 'n' || c == 'N') {
+				cliSerial->printf_P(PSTR("ESC calibration aborted\n"));
+				return(0);
+
+			} 
+
+		/* rate limit to ~ 20 Hz */
+		hal.scheduler->delay(50);
+	}
+
+
+	/* get number of channels available on the device */
+	max_channels = AP_MOTORS_MAX_NUM_MOTORS;
+
+	/* tell IO/FMU that the system is armed (it will output values if safety is off) */
+	motors.armed(true);
+
+
+	cliSerial->printf_P(PSTR("Outputs armed\n"));
+
+
+	/* wait for user confirmation */
+	cliSerial->printf_P(PSTR("\nHigh PWM set: %d\n"
+	       "\n"
+	       "Connect battery now and hit c+ENTER after the ESCs confirm the first calibration step\n"
+	       "\n"), pwm_high);
+
+	while (1) {
+		/* set max PWM */
+		for (unsigned i = 0; i < max_channels; i++) {
+
+			if (set_mask & 1<<i) {
+				motors.output_test(i, pwm_high);
+			}
+		}
+        c = cliSerial->read();
+            
+		if (c == 'c') {
+            break;
+
+		} else if (c == 0x03 || c == 0x63 || c == 'q') {
+			cliSerial->printf_P(PSTR("ESC calibration exited\n"));
+			return(0);
+		}
+        
+		/* rate limit to ~ 20 Hz */
+		hal.scheduler->delay(50);
+	}
+
+	cliSerial->printf_P(PSTR("Low PWM set: %d\n"
+	       "\n"
+	       "Hit c+Enter when finished\n"
+	       "\n"), pwm_low);
+
+	while (1) {
+
+		/* set disarmed PWM */
+		for (unsigned i = 0; i < max_channels; i++) {
+			if (set_mask & 1<<i) {
+				motors.output_test(i, pwm_low);
+			}
+		}
+		c = cliSerial->read();
+
+		if (c == 'c') {
+
+			break;
+
+		} else if (c == 0x03 || c == 0x63 || c == 'q') {
+			cliSerial->printf_P(PSTR("ESC calibration exited\n"));
+			return(0);
+		}
+		
+		/* rate limit to ~ 20 Hz */
+		hal.scheduler->delay(50);
+	}
+
+	/* disarm */
+	motors.armed(false);
+    
+	cliSerial->printf_P(PSTR("Outputs disarmed\n"));
+
+	cliSerial->printf_P(PSTR("ESC calibration finished\n"));
+
+	return(0);
+}
 /***************************************************************************/
 // CLI reports
 /***************************************************************************/

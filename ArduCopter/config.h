@@ -647,7 +647,32 @@
 #ifndef HYBRID_BRAKE_ANGLE_DEFAULT
  # define HYBRID_BRAKE_ANGLE_DEFAULT    3000    // default HYBRID_BRAKE_ANGLE param value.  Max lean angle during braking in centi-degrees
 #endif
+//////////////////////////////////////////////////////////////////////////////
+// Callibration Limits
+//
+#ifndef PWM_CALIB_MIN
+ # define PWM_CALIB_MIN 1000
+#endif
 
+#ifndef PWM_CALIB_MAX
+ # define PWM_CALIB_MAX 2000
+#endif
+
+#ifndef PWM_HIGHEST_MAX
+ # define PWM_HIGHEST_MAX 2200
+#endif
+
+#ifndef PWM_LOWEST_MAX
+ # define PWM_LOWEST_MAX 1200
+#endif
+
+#ifndef PWM_HIGHEST_MIN
+ # define PWM_HIGHEST_MIN 1800
+#endif
+
+#ifndef PWM_LOWEST_MIN
+ # define PWM_LOWEST_MIN 800
+#endif
 //////////////////////////////////////////////////////////////////////////////
 // Throttle control gains
 //
