@@ -154,7 +154,7 @@ static void init_ardupilot()
 #if CONFIG_SONAR == ENABLED
  #if CONFIG_SONAR_SOURCE == SONAR_SOURCE_ADC
     sonar_analog_source = new AP_ADC_AnalogSource(
-            &adc, CONFIG_SONAR_SOURCE_ADC_CHANNEL, 0.25);
+            &apm1_adc, CONFIG_SONAR_SOURCE_ADC_CHANNEL, 0.25);
  #elif CONFIG_SONAR_SOURCE == SONAR_SOURCE_ANALOG_PIN
     sonar_analog_source = hal.analogin->channel(
             CONFIG_SONAR_SOURCE_ANALOG_PIN);
@@ -219,7 +219,7 @@ static void init_ardupilot()
 
  #if CONFIG_ADC == ENABLED
     // begin filtering the ADC Gyros
-    adc.Init();           // APM ADC library initialization
+    apm1_adc.Init();           // APM ADC library initialization
  #endif // CONFIG_ADC
 
     // Do GPS init
