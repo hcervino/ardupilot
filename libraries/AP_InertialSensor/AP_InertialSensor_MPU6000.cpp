@@ -436,6 +436,22 @@ void AP_InertialSensor_MPU6000::_register_write_check(uint8_t reg, uint8_t val)
 }
 
 /*
+  useful when debugging SPI bus errors
+ */
+void AP_InertialSensor_MPU6000::_register_write_check(uint8_t reg, uint8_t val)
+{
+    uint8_t readed;
+    _register_write(reg, val);
+    readed = _register_read(reg);
+    if (readed != val){
+	hal.console->printf_P(PSTR("Values doesn't match; written: %02x; read: %02x "), val, readed);
+    }
+#if MPU6000_DEBUG
+    hal.console->printf_P(PSTR("Values written: %02x; readed: %02x "), val, readed);
+#endif
+}
+
+/*
   set the DLPF filter frequency. Assumes caller has taken semaphore
  */
 void AP_InertialSensor_MPU6000::_set_filter_register(uint8_t filter_hz, uint8_t default_filter)
@@ -462,8 +478,12 @@ void AP_InertialSensor_MPU6000::_set_filter_register(uint8_t filter_hz, uint8_t 
 
     if (filter != 0) {
         _last_filter_hz = filter_hz;
+<<<<<<< HEAD
         // _register_write(MPUREG_CONFIG, filter);
         _register_write_check(MPUREG_CONFIG, filter);
+=======
+        _register_write(MPUREG_CONFIG, filter);
+>>>>>>> master
     }
 }
 

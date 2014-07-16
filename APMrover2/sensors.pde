@@ -9,6 +9,7 @@ static void init_barometer(void)
 
 static void init_sonar(void)
 {
+<<<<<<< HEAD
 #if CONFIG_HAL_BOARD == HAL_BOARD_APM1
     sonar.Init(&apm1_adc);
     sonar2.Init(&apm1_adc);
@@ -16,6 +17,9 @@ static void init_sonar(void)
     sonar.Init(NULL);
     sonar2.Init(NULL);
 #endif
+=======
+    sonar.init();
+>>>>>>> master
 }
 
 // read_battery - reads battery voltage and current and invokes failsafe
@@ -37,15 +41,17 @@ void read_receiver_rssi(void)
 // read the sonars
 static void read_sonars(void)
 {
-    if (!sonar.enabled()) {
+    sonar.update();
+
+    if (!sonar.healthy()) {
         // this makes it possible to disable sonar at runtime
         return;
     }
 
-    if (sonar2.enabled()) {
+    if (sonar.healthy(1)) {
         // we have two sonars
-        obstacle.sonar1_distance_cm = sonar.distance_cm();
-        obstacle.sonar2_distance_cm = sonar2.distance_cm();
+        obstacle.sonar1_distance_cm = sonar.distance_cm(0);
+        obstacle.sonar2_distance_cm = sonar.distance_cm(1);
         if (obstacle.sonar1_distance_cm <= (uint16_t)g.sonar_trigger_cm &&
             obstacle.sonar2_distance_cm <= (uint16_t)obstacle.sonar2_distance_cm)  {
             // we have an object on the left
@@ -72,7 +78,7 @@ static void read_sonars(void)
         }
     } else {
         // we have a single sonar
-        obstacle.sonar1_distance_cm = sonar.distance_cm();
+        obstacle.sonar1_distance_cm = sonar.distance_cm(0);
         obstacle.sonar2_distance_cm = 0;
         if (obstacle.sonar1_distance_cm <= (uint16_t)g.sonar_trigger_cm)  {
             // obstacle detected in front 

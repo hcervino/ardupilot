@@ -10,35 +10,197 @@ import os
 import numpy
 import bisect
 import sys
+import ctypes
 
-class Format:
+class Format(object):
     '''Data channel format as specified by the FMT lines in the log file'''
-    msgType = 0
-    msgLen  = 0
-    name    = ""
-    types   = ""
-    labels  = []
     def __init__(self,msgType,msgLen,name,types,labels):
+        self.NAME    = 'FMT'
         self.msgType = msgType
         self.msgLen  = msgLen
         self.name    = name
         self.types   = types
         self.labels  = labels.split(',')
+
     def __str__(self):
         return "%8s %s" % (self.name, `self.labels`)
 
+    @staticmethod
+    def trycastToFormatType(value,valueType):
+        '''using format characters from libraries/DataFlash/DataFlash.h to cast strings to basic python int/float/string types
+        tries a cast, if it does not work, well, acceptable as the text logs do not match the format, e.g. MODE is expected to be int'''
+        try:
+            if valueType in "fcCeEL":
+                return float(value)
+            elif valueType in "bBhHiIM":
+                return int(value)
+            elif valueType in "nNZ":
+                return str(value)
+        except:
+            pass
+        return value
 
-class Channel:
+    def to_class(self):
+        members = dict(
+            NAME = self.name,
+            labels = self.labels[:],
+        )
+
+        fieldtypes = [i for i in self.types]
+        fieldlabels = self.labels[:]
+
+        # field access
+        for (label, _type) in zip(fieldlabels, fieldtypes):
+            def createproperty(name, format):
+                # extra scope for variable sanity
+                # scaling via _NAME and def NAME(self): return self._NAME / SCALE
+                propertyname = name
+                attributename = '_' + name
+                p = property(lambda x:getattr(x, attributename),
+                             lambda x, v:setattr(x,attributename, Format.trycastToFormatType(v,format)))
+                members[propertyname] = p
+                members[attributename] = None
+            createproperty(label, _type)
+
+        # repr shows all values but the header
+        members['__repr__'] = lambda x: "<{cls} {data}>".format(cls=x.__class__.__name__, data = ' '.join(["{}:{}".format(k,getattr(x,'_'+k)) for k in x.labels]))
+
+        def init(a, *x):
+            if len(x) != len(a.labels):
+                raise ValueError("Invalid Length")
+            #print(list(zip(a.labels, x)))
+            for (l,v) in zip(a.labels, x):
+                try:
+                    setattr(a, l, v)
+                except Exception as e:
+                    print("{} {} {} failed".format(a,l,v))
+                    print(e)
+
+        members['__init__'] = init
+
+        # finally, create the class
+        cls = type(\
+            'Log__{:s}'.format(self.name),
+            (object,),
+            members
+        )
+        #print(members)
+        return cls
+
+
+class logheader(ctypes.LittleEndianStructure):
+    _fields_ = [ \
+        ('head1', ctypes.c_uint8),
+        ('head2', ctypes.c_uint8),
+        ('msgid', ctypes.c_uint8),
+    ]
+    def __repr__(self):
+        return "<logheader head1=0x{self.head1:x} head2=0x{self.head2:x} msgid=0x{self.msgid:x} ({self.msgid})>".format(self=self)
+
+
+class BinaryFormat(ctypes.LittleEndianStructure):
+    NAME = 'FMT'
+    MSG = 128
+    SIZE = 0
+    FIELD_FORMAT = {
+        'b': ctypes.c_int8,
+        'B': ctypes.c_uint8,
+        'h': ctypes.c_int16,
+        'H': ctypes.c_uint16,
+        'i': ctypes.c_int32,
+        'I': ctypes.c_uint32,
+        'f': ctypes.c_float,
+        'n': ctypes.c_char * 4,
+        'N': ctypes.c_char * 16,
+        'Z': ctypes.c_char * 64,
+        'c': ctypes.c_int16,# * 100,
+        'C': ctypes.c_uint16,# * 100,
+        'e': ctypes.c_int32,# * 100,
+        'E': ctypes.c_uint32,# * 100,
+        'L': ctypes.c_int32,
+        'M': ctypes.c_uint8,
+    }
+
+    FIELD_SCALE = {
+        'c': 100,
+        'C': 100,
+        'e': 100,
+        'E': 100,
+    }
+
+    _packed_ = True
+    _fields_ = [ \
+        ('head', logheader),
+        ('type', ctypes.c_uint8),
+        ('length', ctypes.c_uint8),
+        ('name', ctypes.c_char * 4),
+        ('types', ctypes.c_char * 16),
+        ('labels', ctypes.c_char * 64),
+    ]
+    def __repr__(self):
+        return "<{cls} {data}>".format(cls=self.__class__.__name__, data = ' '.join(["{}:{}".format(k,getattr(self,k)) for (k,_) in self._fields_[1:]]))
+
+    def to_class(self):
+        members = dict(
+            NAME = self.name,
+            MSG = self.type,
+            SIZE = self.length,
+            labels = self.labels.split(","),
+            _pack_ = True)
+
+        fieldtypes = [i for i in self.types]
+        fieldlabels = self.labels.split(",")
+        if len(fieldtypes) != len(fieldlabels):
+            print("Broken FMT message for {} .. ignoring".format(self.name), file=sys.stderr)
+            return None
+
+        fields = [('head',logheader)]
+
+        # field access
+        for (label, _type) in zip(fieldlabels, fieldtypes):
+            def createproperty(name, format):
+                # extra scope for variable sanity
+                # scaling via _NAME and def NAME(self): return self._NAME / SCALE
+                propertyname = name
+                attributename = '_' + name
+                scale = BinaryFormat.FIELD_SCALE.get(format, None)
+                p = property(lambda x:getattr(x, attributename))
+                if scale is not None:
+                    p = property(lambda x:getattr(x, attributename) / scale) 
+                members[propertyname] = p
+                fields.append((attributename, BinaryFormat.FIELD_FORMAT[format]))
+            createproperty(label, _type)
+        members['_fields_'] = fields
+
+        # repr shows all values but the header
+        members['__repr__'] = lambda x: "<{cls} {data}>".format(cls=x.__class__.__name__, data = ' '.join(["{}:{}".format(k,getattr(x,k)) for k in x.labels]))
+
+        # finally, create the class
+        cls = type(\
+            'Log__{:s}'.format(self.name),
+            (ctypes.LittleEndianStructure,),
+            members
+        )
+
+        if ctypes.sizeof(cls) != cls.SIZE:
+            print("size mismatch for {} expected {} got {}".format(cls, ctypes.sizeof(cls), cls.SIZE), file=sys.stderr)
+#            for i in cls.labels:
+#                print("{} = {}".format(i,getattr(cls,'_'+i)))
+            return None
+
+        return cls
+
+BinaryFormat.SIZE = ctypes.sizeof(BinaryFormat)
+
+class Channel(object):
     '''storage for a single stream of data, i.e. all GPS.RelAlt values'''
 
     # TODO: rethink data storage, but do more thorough regression testing before refactoring it
     # TODO: store data as a scipy spline curve so we can more easily interpolate and sample the slope?
-    dictData = None #  dict of linenum->value      # store dupe data in dict and list for now, until we decide which is the better way to go
-    listData = None #  list of (linenum,value)     # store dupe data in dict and list for now, until we decide which is the better way to go
 
     def __init__(self):
-        self.dictData = {}
-        self.listData = []
+        self.dictData = {} #  dict of linenum->value      # store dupe data in dict and list for now, until we decide which is the better way to go
+        self.listData = [] #  list of (linenum,value)     # store dupe data in dict and list for now, until we decide which is the better way to go
     def getSegment(self, startLine, endLine):
         '''returns a segment of this data (from startLine to endLine, inclusive) as a new Channel instance'''
         segment = Channel()
@@ -223,27 +385,36 @@ class DataflashLogHelper:
         return None
 
 
-class DataflashLog:
+class DataflashLog(object):
     '''APM Dataflash log file reader and container class. Keep this simple, add more advanced or specific functions to DataflashLogHelper class'''
+    
+    knownHardwareTypes = ["APM", "PX4", "MPNG"]
+    intTypes   = "bBhHiIM"
+    floatTypes = "fcCeEL"
+    charTypes  = "nNZ"    
 
-    filename = None
+    def __init__(self, logfile=None, format="auto", ignoreBadlines=False):
+        self.filename = None
 
-    vehicleType     = "" # ArduCopter, ArduPlane, ArduRover, etc, verbatim as given by header
-    firmwareVersion = ""
-    firmwareHash    = ""
-    freeRAM         = 0
-    hardwareType    = "" # APM 1, APM 2, PX4, MPNG, etc What is VRBrain? BeagleBone, etc? Needs more testing
-
-    formats     = {} # name -> Format
-    parameters  = {} # token -> value
-    messages    = {} # lineNum -> message
-    modeChanges = {} # lineNum -> (mode,value)
-    channels    = {} # lineLabel -> {dataLabel:Channel}
-
-    filesizeKB   = 0
-    durationSecs = 0
-    lineCount    = 0
-    skippedLines = 0
+        self.vehicleType     = "" # ArduCopter, ArduPlane, ArduRover, etc, verbatim as given by header
+        self.firmwareVersion = ""
+        self.firmwareHash    = ""
+        self.freeRAM         = 0
+        self.hardwareType    = "" # APM 1, APM 2, PX4, MPNG, etc What is VRBrain? BeagleBone, etc? Needs more testing
+    
+        self.formats     = {} # name -> Format
+        self.parameters  = {} # token -> value
+        self.messages    = {} # lineNum -> message
+        self.modeChanges = {} # lineNum -> (mode,value)
+        self.channels    = {} # lineLabel -> {dataLabel:Channel}
+    
+        self.filesizeKB   = 0
+        self.durationSecs = 0
+        self.lineCount    = 0
+        self.skippedLines = 0
+        
+        if logfile:
+            self.read(logfile, format, ignoreBadlines)
 
     def getCopterType(self):
         '''returns quad/hex/octo/tradheli if this is a copter log'''
@@ -263,24 +434,7 @@ class DataflashLog:
         else:
             return ""
 
-    def __castToFormatType(self,value,valueType):
-        '''using format characters from libraries/DataFlash/DataFlash.h to cast strings to basic python int/float/string types'''
-        intTypes   = "bBhHiIM"
-        floatTypes = "fcCeEL"
-        charTypes  = "nNZ"
-        if valueType in floatTypes:
-            return float(value)
-        elif valueType in intTypes:
-            return int(value)
-        elif valueType in charTypes:
-            return str(value)
-        else:
-            raise Exception("Unknown value type of '%s' specified to __castToFormatType()" % valueType)
-
-    #def __init__(self, logfile, ignoreBadlines=False):
-        #self.read(logfile, ignoreBadlines)
-
-    def read(self, logfile, ignoreBadlines=False):
+    def read(self, logfile, format="auto", ignoreBadlines=False):
         '''returns on successful log read (including bad lines if ignoreBadlines==True), will throw an Exception otherwise'''
         # TODO: dataflash log parsing code is pretty hacky, should re-write more methodically
         self.filename = logfile
@@ -289,13 +443,112 @@ class DataflashLog:
         else:
             f = open(self.filename, 'r')
 
-        lineNumber = 0
-        knownHardwareTypes = ["APM", "PX4", "MPNG"]
-        numBytes = 0
-        for line in f:
-            if len(line) >= 4 and line[0:4] == '\xa3\x95\x80\x80':
-                raise Exception("Unable to parse binary log files at this time, will be added soon")
+        if format == 'bin':
+            head = '\xa3\x95\x80\x80'
+        elif format == 'log':
+            head = ""
+        elif format == 'auto':
+            if self.filename == '<stdin>':
+                # assuming TXT format
+#                raise ValueError("Invalid log format for stdin: {}".format(format))
+                head = ""
+            else:
+                head = f.read(4)
+                f.seek(0)
+        else:
+            raise ValueError("Unknown log format for {}: {}".format(self.filename, format))
 
+        if head == '\xa3\x95\x80\x80':
+            numBytes, lineNumber = self.read_binary(f, ignoreBadlines)
+            pass
+        else:
+            numBytes, lineNumber = self.read_text(f, ignoreBadlines)
+
+        # gather some general stats about the log
+        self.lineCount  = lineNumber
+        self.filesizeKB = numBytes / 1024.0
+        # TODO: switch duration calculation to use TimeMS values rather than GPS timestemp
+        if "GPS" in self.channels:
+            # the GPS time label changed at some point, need to handle both
+            timeLabel = "TimeMS"
+            if timeLabel not in self.channels["GPS"]:
+                timeLabel = "Time"
+            firstTimeGPS = self.channels["GPS"][timeLabel].listData[0][1]
+            lastTimeGPS  = self.channels["GPS"][timeLabel].listData[-1][1]
+            self.durationSecs = (lastTimeGPS-firstTimeGPS) / 1000
+
+        # TODO: calculate logging rate based on timestamps
+        # ...
+
+    def process(self, lineNumber, e):
+        if e.NAME == 'FMT':
+            cls = e.to_class()
+            if cls is not None: # FMT messages can be broken ...
+                if hasattr(e, 'type') and e.type not in self._formats: # binary log specific
+                    self._formats[e.type] = cls
+                if cls.NAME not in self.formats:
+                    self.formats[cls.NAME] = cls
+        elif e.NAME == "PARM":
+            self.parameters[e.Name] = e.Value
+        elif e.NAME == "MSG":
+            if not self.vehicleType:
+                tokens = e.Message.split(' ')
+                vehicleTypes = ["ArduPlane", "ArduCopter", "ArduRover"]
+                self.vehicleType = tokens[0]
+                self.firmwareVersion = tokens[1]
+                if len(tokens) == 3:
+                    self.firmwareHash = tokens[2][1:-1]
+            else:
+                self.messages[lineNumber] = e.Message
+        elif e.NAME == "MODE":
+            if self.vehicleType == "ArduCopter":
+                try:
+                    modes = {0:'STABILIZE',
+                        1:'ACRO',
+                        2:'ALT_HOLD',
+                        3:'AUTO',
+                        4:'GUIDED',
+                        5:'LOITER',
+                        6:'RTL',
+                        7:'CIRCLE',
+                        9:'LAND',
+                        10:'OF_LOITER',
+                        11:'DRIFT',
+                        13:'SPORT',
+                        14:'FLIP',
+                        15:'AUTOTUNE',
+                        16:'HYBRID',}
+                    self.modeChanges[lineNumber] = (modes[int(e.Mode)], e.ThrCrs)
+                except:
+                    self.modeChanges[lineNumber] = (e.Mode, e.ThrCrs)
+            elif self.vehicleType == "ArduPlane" or self.vehicleType == "ArduRover":
+                self.modeChanges[lineNumber] = (e.Mode, e.ModeNum)
+            else:
+                raise Exception("Unknown log type for MODE line {} {}".format(self.vehicleType, repr(e)))
+        # anything else must be the log data
+        else:
+            groupName = e.NAME
+
+            # first time seeing this type of log line, create the channel storage
+            if not groupName in self.channels:
+                self.channels[groupName] = {}
+                for label in e.labels:
+                    self.channels[groupName][label] = Channel()
+
+            # store each token in its relevant channel
+            for label in e.labels:
+                value = getattr(e, label)
+                channel = self.channels[groupName][label]
+                channel.dictData[lineNumber] = value
+                channel.listData.append((lineNumber, value))
+
+
+    def read_text(self, f, ignoreBadlines):
+        self.formats = {'FMT':Format}
+        lineNumber = 0
+        numBytes = 0
+        knownHardwareTypes = ["APM", "PX4", "MPNG"]
+        for line in f:
             lineNumber = lineNumber + 1
             numBytes += len(line) + 1
             try:
@@ -307,17 +560,6 @@ class DataflashLog:
                     continue
                 if line == "----------------------------------------":  # present in pre-3.0 logs
                     raise Exception("Log file seems to be in the older format (prior to self-describing logs), which isn't supported")
-                # Some logs are missing the initial dataflash header which says the log index and the type of log, but we can catch the vehicle
-                # type here too in the MSG line
-                if not self.vehicleType and tokens[0] == "MSG":
-                    tokens2 = line.split(' ')
-                    vehicleTypes = ["ArduPlane", "ArduCopter", "ArduRover"]
-                    if tokens2[1] in vehicleTypes and tokens2[2][0].lower() == "v":
-                        self.vehicleType = tokens2[1]
-                        self.firmwareVersion = tokens2[1]
-                        if len(tokens2) == 3:
-                            self.firmwareHash    = tokens2[2][1:-1]
-                    continue
                 if len(tokens) == 1:
                     tokens2 = line.split(' ')
                     if line == "":
@@ -340,75 +582,46 @@ class DataflashLog:
                             self.skippedLines += 1
                         else:
                             raise Exception("")
-                # now handle the non-log data stuff, format descriptions, params, etc
-                elif tokens[0] == "FMT":
-                    format = None
-                    if len(tokens) == 6:
-                        format = Format(tokens[1],tokens[2],tokens[3],tokens[4],tokens[5])
-                    elif len(tokens) == 5:  # some logs have FMT STRT with no labels
-                        format = Format(tokens[1],tokens[2],tokens[3],tokens[4],"")
-                    else:
-                        raise Exception("FMT error, nTokens: %d" % len(tokens))
-                    #print format  # TEMP
-                    self.formats[tokens[3]] = format
-                elif tokens[0] == "PARM":
-                    pName = tokens[1]
-                    self.parameters[pName] = float(tokens[2])
-                elif tokens[0] == "MSG":
-                    self.messages[lineNumber] = tokens[1]
-                elif tokens[0] == "MODE":
-                    if self.vehicleType == "ArduCopter":
-                        self.modeChanges[lineNumber] = (tokens[1],int(tokens[2]))
-                    elif self.vehicleType == "ArduPlane" or self.vehicleType == "ArduRover":
-                        self.modeChanges[lineNumber] = (tokens[2],int(tokens[3]))
-                    else:
-                        raise Exception("Unknown log type for MODE line")
-                # anything else must be the log data
                 else:
-                    groupName = tokens[0]
-                    tokens2 = line.split(', ')
-                    # first time seeing this type of log line, create the channel storage
-                    if not groupName in self.channels:
-                        self.channels[groupName] = {}
-                        for label in self.formats[groupName].labels:
-                            self.channels[groupName][label] = Channel()
-                    # check the number of tokens matches between the line and what we're expecting from the FMT definition
-                    if (len(tokens2)-1) != len(self.formats[groupName].labels):
-                        errorMsg = "%s line's value count (%d) not matching FMT specification (%d) on line %d" % (groupName, len(tokens2)-1, len(self.formats[groupName].labels), lineNumber)
-                        if ignoreBadlines:
-                            print(errorMsg + " (skipping line)", file=sys.stderr)
-                            self.skippedLines += 1
-                            continue
-                        else:
-                            raise Exception(errorMsg)
-                    # store each token in its relevant channel
-                    for (index,label) in enumerate(self.formats[groupName].labels):
-                        #value = float(tokens2[index+1])  # simple read without handling datatype
-                        value = self.__castToFormatType(tokens2[index+1], self.formats[groupName].types[index])  # handling datatype via this call slows down ready by about 50%
-                        channel = self.channels[groupName][label]
-                        #print "Set data {%s,%s} for line %d to value %s, of type %c, stored at address %s" % (groupName, label, lineNumber, `value`, self.formats[groupName].types[index], hex(id(channel.dictData)))
-                        channel.dictData[lineNumber] = value
-                        channel.listData.append((lineNumber,value))
+                    if not tokens[0] in self.formats:
+                        raise ValueError("Unknown Format {}".format(tokens[0]))
+                    e = self.formats[tokens[0]](*tokens[1:])
+                    self.process(lineNumber, e)
             except Exception as e:
                 print("BAD LINE: " + line, file=sys.stderr)
                 raise Exception("Error parsing line %d of log file %s - %s" % (lineNumber,self.filename,e.args[0]))
+        return (numBytes,lineNumber)
 
+    def read_binary(self, f, ignoreBadlines):
+        lineNumber = 0
+        numBytes = 0
+        for e in self._read_binary(f, ignoreBadlines):
+            lineNumber += 1
+            if e is None:
+                continue
+            numBytes += e.SIZE
+#            print(e)
+            self.process(lineNumber, e)
+        return (numBytes,lineNumber)
 
-        # gather some general stats about the log
-        self.lineCount  = lineNumber
-        self.filesizeKB = numBytes / 1024.0 # For data that comes from a process pipe, filesize is not supported
-
-        # TODO: switch duration calculation to use TimeMS values rather than GPS timestemp
-        if "GPS" in self.channels:
-            # the GPS time label changed at some point, need to handle both
-            timeLabel = "TimeMS"
-            if timeLabel not in self.channels["GPS"]:
-                timeLabel = "Time"
-            firstTimeGPS = self.channels["GPS"][timeLabel].listData[0][1]
-            lastTimeGPS  = self.channels["GPS"][timeLabel].listData[-1][1]
-            self.durationSecs = (lastTimeGPS-firstTimeGPS) / 1000
-
-        # TODO: calculate logging rate based on timestamps
-        # ...
-
-
+    def _read_binary(self, f, ignoreBadlines):
+        self._formats = {128:BinaryFormat}
+        data = bytearray(f.read())
+        offset = 0
+        while len(data) > offset:
+            h = logheader.from_buffer(data, offset)
+            if not (h.head1 == 0xa3 and h.head2 == 0x95):
+                raise ValueError(h)
+            if h.msgid in self._formats:
+                typ = self._formats[h.msgid]
+                if len(data) <= offset + typ.SIZE:
+                    break
+                try:
+                    e = typ.from_buffer(data, offset)
+                except:
+                    print("data:{} offset:{} size:{} sizeof:{} sum:{}".format(len(data),offset,typ.SIZE,ctypes.sizeof(typ),offset+typ.SIZE))
+                    raise
+                offset += typ.SIZE
+            else:
+                raise ValueError(str(h) + "unknown type")
+            yield e

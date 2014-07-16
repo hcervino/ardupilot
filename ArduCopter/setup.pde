@@ -2,10 +2,20 @@
 
 #if CLI_ENABLED == ENABLED
 
+#if HAL_CPU_CLASS >= HAL_CPU_CLASS_75
+#define WITH_ESC_CALIB
+#endif
+
 // Functions called from the setup menu
 static int8_t   setup_factory           (uint8_t argc, const Menu::arg *argv);
 static int8_t   setup_show              (uint8_t argc, const Menu::arg *argv);
+<<<<<<< HEAD
 static int8_t   esc_calib               (uint8_t argc, const Menu::arg *argv);
+=======
+#ifdef WITH_ESC_CALIB
+static int8_t   esc_calib               (uint8_t argc, const Menu::arg *argv);
+#endif
+>>>>>>> master
 
 // Command/function table for the setup menu
 const struct Menu::command setup_menu_commands[] PROGMEM = {
@@ -13,7 +23,13 @@ const struct Menu::command setup_menu_commands[] PROGMEM = {
     // =======          ===============
     {"reset",                       setup_factory},
     {"show",                        setup_show},
+<<<<<<< HEAD
     {"esc_calib",                   esc_calib},
+=======
+#ifdef WITH_ESC_CALIB
+    {"esc_calib",                   esc_calib},
+#endif
+>>>>>>> master
 };
 
 // Create the setup menu object.
@@ -88,7 +104,6 @@ setup_show(uint8_t argc, const Menu::arg *argv)
     report_radio();
     report_frame();
     report_batt_monitor();
-    report_sonar();
     report_flight_modes();
     report_ins();
     report_compass();
@@ -99,6 +114,17 @@ setup_show(uint8_t argc, const Menu::arg *argv)
     return(0);
 }
 
+<<<<<<< HEAD
+=======
+#ifdef WITH_ESC_CALIB
+#define PWM_CALIB_MIN 1000
+#define PWM_CALIB_MAX 2000
+#define PWM_HIGHEST_MAX 2200
+#define PWM_LOWEST_MAX 1200
+#define PWM_HIGHEST_MIN 1800
+#define PWM_LOWEST_MIN 800
+
+>>>>>>> master
 static int8_t
 esc_calib(uint8_t argc,const Menu::arg *argv)
 {
@@ -235,6 +261,12 @@ esc_calib(uint8_t argc,const Menu::arg *argv)
 
 	return(0);
 }
+<<<<<<< HEAD
+=======
+#endif // WITH_ESC_CALIB
+
+
+>>>>>>> master
 /***************************************************************************/
 // CLI reports
 /***************************************************************************/
@@ -246,15 +278,6 @@ static void report_batt_monitor()
     if (battery.monitoring() == AP_BATT_MONITOR_DISABLED) print_enabled(false);
     if (battery.monitoring() == AP_BATT_MONITOR_VOLTAGE_ONLY) cliSerial->printf_P(PSTR("volts"));
     if (battery.monitoring() == AP_BATT_MONITOR_VOLTAGE_AND_CURRENT) cliSerial->printf_P(PSTR("volts and cur"));
-    print_blanks(2);
-}
-
-static void report_sonar()
-{
-    cliSerial->printf_P(PSTR("Sonar\n"));
-    print_divider();
-    print_enabled(g.sonar_enabled.get());
-    cliSerial->printf_P(PSTR("Type: %d (0=XL, 1=LV, 2=XLL, 3=HRLV)"), (int)g.sonar_type);
     print_blanks(2);
 }
 

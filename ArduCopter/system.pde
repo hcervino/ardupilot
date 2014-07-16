@@ -151,6 +151,7 @@ static void init_ardupilot()
     // initialise battery monitor
     battery.init();
     
+<<<<<<< HEAD
 #if CONFIG_SONAR == ENABLED
  #if CONFIG_SONAR_SOURCE == SONAR_SOURCE_ADC
     sonar_analog_source = new AP_ADC_AnalogSource(
@@ -165,6 +166,8 @@ static void init_ardupilot()
             &sonar_mode_filter);
 #endif
 
+=======
+>>>>>>> master
     rssi_analog_source      = hal.analogin->channel(g.rssi_pin);
 
     barometer.init();
@@ -291,6 +294,15 @@ static void init_ardupilot()
 #if LOGGING_ENABLED == ENABLED
     Log_Write_Startup();
 #endif
+
+    // we don't want writes to the serial port to cause us to pause
+    // mid-flight, so set the serial ports non-blocking once we are
+    // ready to fly
+    hal.uartA->set_blocking_writes(false);
+    hal.uartC->set_blocking_writes(false);
+    if (hal.uartD != NULL) {
+        hal.uartD->set_blocking_writes(false);
+    }
 
     cliSerial->print_P(PSTR("\nReady to FLY "));
 }

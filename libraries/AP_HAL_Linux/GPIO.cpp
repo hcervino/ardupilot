@@ -21,6 +21,10 @@ LinuxGPIO::LinuxGPIO()
 
 void LinuxGPIO::init()
 {
+<<<<<<< HEAD
+=======
+#if LINUX_GPIO_NUM_BANKS == 4
+>>>>>>> master
     int mem_fd;
     // Enable all GPIO banks
     // Without this, access to deactivated banks (i.e. those with no clock source set up) will (logically) fail with SIGBUS
@@ -56,6 +60,10 @@ void LinuxGPIO::init()
     }
 
     close(mem_fd);
+<<<<<<< HEAD
+=======
+#endif // LINUX_GPIO_NUM_BANKS
+>>>>>>> master
 }
 
 void LinuxGPIO::pinMode(uint8_t pin, uint8_t output)
@@ -71,6 +79,10 @@ void LinuxGPIO::pinMode(uint8_t pin, uint8_t output)
         *gpio_bank[bank].oe &= ~(1U<<bankpin);
     }
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> master
 int8_t LinuxGPIO::analogPinToDigitalPin(uint8_t pin)
 {
     return -1;

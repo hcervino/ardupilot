@@ -4,7 +4,10 @@
  */
 
 // Libraries
+<<<<<<< HEAD
 #include <sys/time.h>
+=======
+>>>>>>> master
 #include <AP_Common.h>
 #include <AP_Progmem.h>
 #include <AP_Param.h>

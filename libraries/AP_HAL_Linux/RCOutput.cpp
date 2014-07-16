@@ -67,7 +67,10 @@ void LinuxRCOutput::disable_ch(uint8_t ch)
 void LinuxRCOutput::write(uint8_t ch, uint16_t period_us)
 {
     sharedMem_cmd->periodhi[chan_pru_map[ch]][1] = TICK_PER_US*period_us;
+<<<<<<< HEAD
     sharedMem_cmd->magic = PWM_CMD_MAGIC;
+=======
+>>>>>>> master
 }
 
 void LinuxRCOutput::write(uint8_t ch, uint16_t* period_us, uint8_t len)
