@@ -3,6 +3,10 @@
 #define __AP_HAL_LINUX_RCINPUT_H__
 
 #include <AP_HAL_Linux.h>
+#define PRU0_SHARED_BASE     0x4a311000
+#define TICK_PER_US 200
+#define TICK_PER_S 200000000
+
 
 class Linux::LinuxRCInput : public AP_HAL::RCInput {
 public:
@@ -19,7 +23,15 @@ public:
 
  private:
     bool new_rc_input;
-
+    struct rcinput {
+      uint32_t pinToMonitor;
+      uint32_t header;
+      uint32_t tail;
+      struct values {
+	uint32_t value;
+	uint32_t timestamp;
+      } vals[100];
+    }*rcin;
     /* override state */
     uint16_t _override[8];
 };

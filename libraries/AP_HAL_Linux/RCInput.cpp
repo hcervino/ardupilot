@@ -3,14 +3,36 @@
 #if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 
 #include "RCInput.h"
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <signal.h>
 using namespace Linux;
+
+static const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
+
 LinuxRCInput::LinuxRCInput() :
 new_rc_input(false)
 {}
 
-void LinuxRCInput::init(void* machtnichts)
-{}
+static void catch_sigbus(int sig) {
+  hal.scheduler->panic("RCInput.cpp:SIGBUS error generated\n");
+}
+
+void LinuxRCInput::init(void* machtnichts){
+  uint32_t mem_fd;
+  signal(SIGBUS,catch_sigbus);
+  mem_fd = open("/dev/mem", O_RDWR|O_SYNC);
+  rcin = (struct rcinput *) mmap(0, 0x1000, PROT_READ|PROT_WRITE, MAP_SHARED, mem_fd,PRU0_SHARED_BASE );
+  close(mem_fd);
+}
 
 bool LinuxRCInput::new_input() 
 {
