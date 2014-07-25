@@ -23,6 +23,17 @@ static inline u32 read_PIEP_COUNT(void)
 
 }
 
+struct rcinput {
+  u32 pinToMonitor;
+  u32 header;
+  u32 tail;
+}rcin;
+
+struct values {
+  u32 highlow;
+  u32 timestamp;
+}val;
+
 int main(int argc, char *argv[])
 {
 
@@ -45,9 +56,14 @@ int main(int argc, char *argv[])
 	PIEP_CMP_CFG |= CMP_CFG_CMP_EN(1);
         PIEP_GLOBAL_CFG |= GLOBAL_CFG_CNT_ENABLE;
 
-	
+	while(1) {
+	  cnt = read_PIEP_COUNT();
+	  val.timestamp = cnt;
+	  val.highlow = pru_read_other_reg(15);
+	  
+	}
 		/* loop while nothing changes */
 		do {
-			cnt = read_PIEP_COUNT();
+		  cnt = read_PIEP_COUNT();
 		} while (((next - cnt) & (1U << 31)) == 0);
 }

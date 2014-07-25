@@ -4,7 +4,7 @@
 volatile register unsigned int __R31;
 volatile register unsigned int __R30;
 
-__far volatile char C0[0x300] __attribute__((cregister("C0", far)));
+__far volatile char C0[0x300] __attribute__((cregister("C0", far))); /* PINTC */
 __far volatile char C26[0x100] __attribute__((cregister("C26", near)));	/* PRUIEP */
 __far volatile char C4[0x100] __attribute__((cregister("C4", near)));	/* PRUCFG */
 
@@ -646,4 +646,4 @@ static inline void pru_other_and_or_reg(u16 reg, u32 andmsk, u32 ormsk)
 
 #endif
 
-#endif
+
