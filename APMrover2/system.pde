@@ -126,6 +126,46 @@ static void init_ardupilot()
     // init baro before we start the GCS, so that the CLI baro test works
     barometer.init();
 
+// Logging about IMU and Barometer
+#if CONFIG_INS_TYPE == HAL_INS_MPU6000
+    cliSerial->printf_P(PSTR("IMU: MPU6000\n"));
+#elif CONFIG_INS_TYPE == HAL_INS_PX4
+    cliSerial->printf_P(PSTR("IMU: PX4\n"));
+#elif CONFIG_INS_TYPE == HAL_INS_VRBRAIN
+    cliSerial->printf_P(PSTR("IMU: VRBRAIN\n"));
+#elif CONFIG_INS_TYPE == HAL_INS_HIL
+    cliSerial->printf_P(PSTR("IMU: HIL\n"));
+#elif CONFIG_INS_TYPE == HAL_INS_OILPAN
+    cliSerial->printf_P(PSTR("IMU: OILPAN\n"));
+#elif CONFIG_INS_TYPE == HAL_INS_FLYMAPLE
+    cliSerial->printf_P(PSTR("IMU: FLYMAPLE\n"));
+#elif CONFIG_INS_TYPE == HAL_INS_L3G4200D
+    cliSerial->printf_P(PSTR("IMU: L3G4200D\n"));
+#elif CONFIG_INS_TYPE == HAL_INS_MPU9250
+    cliSerial->printf_P(PSTR("IMU: MPU9250\n"));
+#elif CONFIG_INS_TYPE == HAL_INS_L3GD20
+    cliSerial->printf_P(PSTR("IMU: L3GD20\n"));
+#else
+    cliSerial->printf_P(PSTR("IMU: None!"\n"));
+#endif // CONFIG_INS_TYPE
+
+
+#if CONFIG_BARO == HAL_BARO_BMP085
+    cliSerial->printf_P(PSTR("Barometer: BMP085\n"));
+#elif CONFIG_BARO == HAL_BARO_PX4
+    cliSerial->printf_P(PSTR("Barometer: PX4\n"));
+#elif CONFIG_BARO == HAL_BARO_VRBRAIN
+    cliSerial->printf_P(PSTR("Barometer: VRBRAIN\n"));
+#elif CONFIG_BARO == HAL_BARO_HIL
+    cliSerial->printf_P(PSTR("Barometer: HIL\n"));
+#elif CONFIG_BARO == HAL_BARO_MS5611
+    cliSerial->printf_P(PSTR("Barometer: MS5611 I2C\n"));
+#elif CONFIG_BARO == HAL_BARO_MS5611_SPI
+    cliSerial->printf_P(PSTR("Barometer: MS5611 SPI\n"));
+#else
+    cliSerial->printf_P(PSTR("Barometer: None!\n"));
+#endif        
+
 	// init the GCS
 	gcs[0].init(hal.uartA);
 
