@@ -33,6 +33,14 @@ public:
     void _timer_tick(void);
 
 private:
+    uint32_t fptr;
+    uint32_t write(uint16_t fd, uint8_t *Buff, uint16_t NumBytes);
+    uint32_t read(uint16_t fd, uint8_t *Buff, uint16_t NumBytes);
+    uint32_t lseek(uint16_t fd,uint32_t offset,uint16_t whence);
+    uint32_t open(const char *Path, uint16_t Flags, uint16_t perm);
+    uint32_t open(const char *Path, uint16_t Flags);
+    void close(uint16_t fd);
+    uint32_t fsync(uint16_t fd);
     int _fd;
     volatile bool _initialised;
     void _storage_create(void);

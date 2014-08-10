@@ -17,6 +17,7 @@
 #include "Semaphores.h"
 #include "Scheduler.h"
 #include "Util.h"
+#include "EEPROM.h"
 
 #endif // __AP_HAL_LINUX_PRIVATE_H__
 

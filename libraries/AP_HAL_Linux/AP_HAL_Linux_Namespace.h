@@ -22,6 +22,7 @@ namespace Linux {
     class LinuxSemaphore;
     class LinuxScheduler;
     class LinuxUtil;
+	class LinuxEEPROM;
 }
 
 #endif // __AP_HAL_LINUX_NAMESPACE_H__

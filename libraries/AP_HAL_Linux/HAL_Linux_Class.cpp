@@ -26,6 +26,7 @@ static LinuxRCInput rcinDriver;
 static LinuxRCOutput rcoutDriver;
 static LinuxScheduler schedulerInstance;
 static LinuxUtil utilInstance;
+static LinuxEEPROM EEPROMInstance;
 
 HAL_Linux::HAL_Linux() :
     AP_HAL::HAL(
@@ -43,7 +44,8 @@ HAL_Linux::HAL_Linux() :
         &rcinDriver,
         &rcoutDriver,
         &schedulerInstance,
-        &utilInstance)
+        &utilInstance,
+		&EEPROMInstance)
 {}
 
 void _usage(void)
