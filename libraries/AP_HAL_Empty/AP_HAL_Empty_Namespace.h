@@ -22,6 +22,7 @@ namespace Empty {
     class EmptySemaphore;
     class EmptyScheduler;
     class EmptyUtil;
+	class EmptyEEPROM;
     class EmptyPrivateMember;
 }
 
