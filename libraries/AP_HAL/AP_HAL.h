@@ -21,7 +21,7 @@
 #include "Scheduler.h"
 #include "Semaphores.h"
 #include "Util.h"
-
+#include "EEPROM.h"
 #include "utility/Print.h"
 #include "utility/Stream.h"
 #include "utility/BetterStream.h"

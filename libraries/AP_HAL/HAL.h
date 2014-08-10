@@ -28,7 +28,8 @@ public:
         AP_HAL::RCInput*    _rcin,
         AP_HAL::RCOutput*   _rcout,
         AP_HAL::Scheduler*  _scheduler,
-        AP_HAL::Util*       _util)
+        AP_HAL::Util*       _util,
+		AP_HAL::EEPROM*		_EEPROM)
         :
         uartA(_uartA),
         uartB(_uartB),
@@ -44,7 +45,8 @@ public:
         rcin(_rcin),
         rcout(_rcout),
         scheduler(_scheduler),
-        util(_util)
+        util(_util),
+		EEPROM(_EEPROM)
     {}
 
     virtual void init(int argc, char * const argv[]) const = 0;
@@ -64,6 +66,7 @@ public:
     AP_HAL::RCOutput*   rcout;
     AP_HAL::Scheduler*  scheduler;
     AP_HAL::Util*       util;
+	AP_HAL::EEPROM*		EEPROM;
 };
 
 #endif // __AP_HAL_HAL_H__

@@ -28,7 +28,8 @@ namespace AP_HAL {
     class Semaphore;
     
     class Util;
-
+	
+	class EEPROM;
     /* Utility Classes */
     class Print;
     class Stream;
