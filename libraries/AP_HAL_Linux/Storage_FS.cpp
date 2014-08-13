@@ -1,6 +1,6 @@
 #include <AP_HAL.h>
-#if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
-#define USE_FRAM_STORAGE
+#if CONFIG_HAL_BOARD == HAL_BOARD_LINUX && HAL_STORAGE == USE_FS
+
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -9,9 +9,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "Storage.h"
-#include "EEPROM.h"
-
+#include "Storage_FS.h"
 using namespace Linux;
 
 /*
@@ -21,21 +19,16 @@ using namespace Linux;
 
 // name the storage file after the sketch so you can use the same board
 // card for ArduCopter and ArduPlane
-
 #define STORAGE_DIR "/var/APM"
 #define STORAGE_FILE STORAGE_DIR "/" SKETCHNAME ".stg"
+
 extern const AP_HAL::HAL& hal;
 
 void LinuxStorage::_storage_create(void)
 {
-#ifdef USE_FS_STORAGE
 	mkdir(STORAGE_DIR, 0777);
 	unlink(STORAGE_FILE);
-#endif
 	int fd = open(STORAGE_FILE, O_RDWR|O_CREAT, 0666);
-#ifdef USE_FRAM_STORAGE
-	hal.console->println("Storage: FRAM is getting reset to default values");
-#endif
 	if (fd == -1) {
 		hal.scheduler->panic("Failed to create " STORAGE_FILE);
 	}
@@ -44,12 +37,11 @@ void LinuxStorage::_storage_create(void)
 			hal.scheduler->panic("Error filling " STORAGE_FILE);			
 		}
 	}
-
 	// ensure the directory is updated with the new size
-
 	fsync(fd);
 	close(fd);
 }
+
 void LinuxStorage::_storage_open(void)
 {
 	if (_initialised) {
@@ -65,7 +57,6 @@ void LinuxStorage::_storage_open(void)
 			hal.scheduler->panic("Failed to open " STORAGE_FILE);
 		}
 	}
-	
 	if (read(fd, _buffer, sizeof(_buffer)) != sizeof(_buffer)) {
 		close(fd);
 		_storage_create();
@@ -243,79 +234,6 @@ void LinuxStorage::_timer_tick(void)
 			}
 		}
 	}
-}
-
-uint32_t LinuxStorage::write(uint16_t fd, uint8_t *Buff, uint16_t NumBytes){
-#ifdef USE_FS_STORAGE
-    return write(fd,Buff,Numbyte);
-#endif
-#ifdef USE_FRAM_STORAGE
-	if(hal.EEPROM->_register_write(Buff,fptr,NumBytes) == -1){
-		return -1;
-	}
-	return NumBytes;
-#endif    
-}
-uint32_t LinuxStorage::read(uint16_t fd, uint8_t *Buff, uint16_t NumBytes){
-#ifdef USE_FS_STORAGE
-    return read(fd,Buff,Numbyte);
-#endif
-#ifdef USE_FRAM_STORAGE
-    for(int i=fptr;i<(fptr+NumBytes);i++){
-        Buff[i-fptr]=hal.EEPROM->_register_read(i,OPCODE_READ);
-
-		if(Buff[i-fptr]==-1){
-			return -1;
-		}
-        if(Buff[i-fptr]==EOF){
-            fptr=i-1;
-            Buff[i-fptr]=NULL;
-            return 0;
-        }
-    }
-#endif   
-    fptr+=NumBytes; 
-    return NumBytes; 
-}
-uint32_t LinuxStorage::lseek(uint16_t fd,uint32_t offset,uint16_t whence){
-#ifdef USE_FS_STORAGE
-    return ::lseek(fd,offset,whence);
-#endif
-#ifdef USE_FRAM_STORAGE
-    fptr = offset;
-    return offset;
-#endif  
-    
-}
-uint32_t LinuxStorage::open(const char *Path, uint16_t Flags,uint16_t perm){
-#ifdef USE_FS_STORAGE
-    return ::open(Path,Flags,perm);
-#endif
-#ifdef USE_FRAM_STORAGE
-    fptr = 0;
-    return hal.EEPROM->init(NULL);
-#endif  
-}
-uint32_t LinuxStorage::open(const char *Path, uint16_t Flags){
-#ifdef USE_FS_STORAGE
-    return ::open(Path,Flags);
-#endif
-#ifdef USE_FRAM_STORAGE
-    fptr = 0;
-    return hal.EEPROM->init(NULL);
-#endif  
-}
-void LinuxStorage::close(uint16_t fd){
-#ifdef USE_FS_STORAGE
-    ::close(fd);
-#endif
-    return;
-}
-uint32_t LinuxStorage::fsync(uint16_t fd){
-#ifdef USE_FS_STORAGE
-    return ::fsync(fd);
-#endif
-    return 0;
 }
 
 #endif // CONFIG_HAL_BOARD
