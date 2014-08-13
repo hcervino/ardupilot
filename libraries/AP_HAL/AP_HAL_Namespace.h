@@ -29,7 +29,6 @@ namespace AP_HAL {
     
     class Util;
 	
-	class EEPROM;
     /* Utility Classes */
     class Print;
     class Stream;
